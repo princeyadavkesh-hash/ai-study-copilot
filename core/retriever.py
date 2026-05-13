@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Dict, Any
-import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 
 from core.vector_store import VectorStore
+from core.embedder import LightweightEmbedder
 
 
 @dataclass
@@ -14,10 +13,16 @@ class RetrievalResult:
 
 
 class Retriever:
-    def __init__(self, vector_store: VectorStore):
+    def __init__(
+        self,
+        vector_store: VectorStore,
+        embedder: LightweightEmbedder
+    ):
         self.vector_store = vector_store
+        self.embedder = embedder
 
-    def query(self, query_vector: np.ndarray, top_k: int = 3) -> RetrievalResult:
+    def query(self, query: str, top_k: int = 3) -> RetrievalResult:
+
         if len(self.vector_store.documents) == 0:
             return RetrievalResult(
                 context="",
@@ -25,24 +30,31 @@ class Retriever:
                 found=False
             )
 
-        similarities = cosine_similarity(
-            [query_vector],
-            self.vector_store.vectors
-        )[0]
+        results = self.embedder.search(query, top_k=top_k)
 
-        top_indices = similarities.argsort()[-top_k:][::-1]
+        if not results:
+            return RetrievalResult(
+                context="",
+                citations=[],
+                found=False
+            )
 
         contexts = []
         citations = []
 
-        for idx in top_indices:
+        for result in results:
+            idx = result["index"]
+
+            if idx >= len(self.vector_store.documents):
+                continue
+
             doc = self.vector_store.documents[idx]
 
             contexts.append(doc["text"])
 
             citations.append({
                 "source": doc.get("source", "Unknown"),
-                "score": float(similarities[idx])
+                "score": round(result["score"], 4)
             })
 
         context = "\n\n".join(contexts)
