@@ -5,236 +5,145 @@
 
     <meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>AI Study Copilot</title>
-
-    <!-- MARKDOWN RENDERER -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <style>
 
         body {
-            background-color: #07153a;
-            color: white;
+
             font-family: Arial, sans-serif;
+            background: #16213e;
+            color: white;
             margin: 0;
             padding: 0;
         }
 
         .container {
-            width: 75%;
+
+            width: 90%;
+            max-width: 1100px;
             margin: auto;
-            margin-top: 40px;
-            background: #1e2b4a;
-            padding: 40px;
-            border-radius: 20px;
-            margin-bottom: 40px;
+            padding: 20px;
         }
 
         h1 {
+
             text-align: center;
-            font-size: 60px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
-        textarea {
-            width: 100%;
-            height: 150px;
-            background: #02103a;
-            color: white;
-            border: 1px solid #3d5ba9;
-            border-radius: 15px;
+        .card {
+
+            background: #1f4068;
             padding: 20px;
-            font-size: 20px;
-            box-sizing: border-box;
-            margin-top: 20px;
-            resize: vertical;
-        }
-
-        select {
-            width: 100%;
-            padding: 18px;
-            background: #02103a;
-            color: white;
-            border: 1px solid #3d5ba9;
-            border-radius: 15px;
-            font-size: 18px;
-            margin-top: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
         }
 
         button {
+
             width: 100%;
-            padding: 20px;
-            margin-top: 20px;
-            background: #3d6df2;
+            padding: 14px;
             border: none;
-            border-radius: 15px;
-            color: white;
-            font-size: 22px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        button:hover {
-            background: #5a84ff;
-        }
-
-        .danger-button {
-            background: #d94141;
-        }
-
-        .danger-button:hover {
-            background: #ff5c5c;
-        }
-
-        .status {
-            margin-top: 20px;
-            font-size: 18px;
-            color: #7CFF9B;
-            white-space: pre-line;
-        }
-
-        .loading {
-            margin-top: 20px;
-            color: #ffd166;
-            font-size: 18px;
-        }
-
-        .chat-container {
-            margin-top: 40px;
-        }
-
-        .message {
-            margin-top: 25px;
-            padding: 25px;
-            border-radius: 20px;
-            line-height: 1.8;
-            font-size: 18px;
-        }
-
-        .user-message {
-            background: #244cb3;
-        }
-
-        .ai-message {
-            background: #071a4d;
-        }
-
-        .citation-box {
-            margin-top: 15px;
-            background: #10255f;
-            padding: 15px;
             border-radius: 12px;
-            border-left: 4px solid #4d7cff;
-        }
-
-        .message-title {
-            font-size: 24px;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
-
-        .preview {
+            cursor: pointer;
+            font-size: 18px;
             margin-top: 10px;
-            color: #c7d7ff;
-            font-size: 15px;
         }
 
-        .typing-cursor {
-            display: inline-block;
-            width: 10px;
-            animation: blink 1s infinite;
+        .upload-btn {
+
+            background: #4e73df;
+            color: white;
         }
 
-        @keyframes blink {
+        .ask-btn {
 
-            50% {
-                opacity: 0;
-            }
+            background: #4e73df;
+            color: white;
         }
 
-        .stats-container {
-            margin-top: 40px;
-            background: #162d73;
-            padding: 30px;
-            border-radius: 20px;
+        .clear-btn {
+
+            background: #e74a3b;
+            color: white;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+        textarea {
+
+            width: 100%;
+            height: 120px;
+            border-radius: 12px;
+            border: none;
+            padding: 15px;
+            font-size: 18px;
+            background: #0f3460;
+            color: white;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        select {
+
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            margin-bottom: 15px;
+            background: #0f3460;
+            color: white;
+            font-size: 16px;
+        }
+
+        .stats {
+
+            display: flex;
             gap: 20px;
             margin-top: 20px;
         }
 
-        .stat-card {
-            background: #244194;
-            padding: 25px;
-            border-radius: 15px;
+        .stat-box {
+
+            flex: 1;
+            background: #2c4aa5;
+            border-radius: 16px;
+            padding: 20px;
             text-align: center;
         }
 
-        .stat-number {
+        .stat-box h2 {
+
             font-size: 50px;
-            font-weight: bold;
+            margin: 0;
         }
 
-        .stat-label {
-            margin-top: 10px;
-            font-size: 22px;
-        }
+        .message {
 
-        .doc-card {
-            background: #244194;
+            background: #2c4aa5;
+            border-radius: 16px;
             padding: 20px;
-            border-radius: 15px;
-            margin-top: 15px;
+            margin-top: 20px;
         }
 
-        .doc-name {
-            font-size: 24px;
-            font-weight: bold;
+        .bot {
+
+            background: #001f5b;
         }
 
-        .doc-meta {
-            margin-top: 8px;
-            color: #d6e2ff;
-            font-size: 18px;
-        }
+        .citation {
 
-        /* MARKDOWN STYLING */
-
-        .ai-message h1,
-        .ai-message h2,
-        .ai-message h3 {
-            margin-top: 25px;
-            color: #9cc2ff;
-        }
-
-        .ai-message ul {
-            padding-left: 25px;
-        }
-
-        .ai-message li {
-            margin-top: 10px;
-        }
-
-        .ai-message code {
-            background: #02103a;
-            padding: 3px 8px;
-            border-radius: 6px;
-            color: #ffd166;
-        }
-
-        .ai-message pre {
-            background: #02103a;
-            padding: 20px;
+            background: #0f3460;
+            padding: 12px;
             border-radius: 12px;
-            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .status {
+
+            margin-top: 10px;
+            color: #8fff9f;
         }
 
     </style>
@@ -247,188 +156,135 @@
 
         <h1>AI Study Copilot</h1>
 
-        <input
-            type="file"
-            id="pdfFile"
-        >
+        <!-- Upload -->
 
-        <button onclick="uploadPDF()">
-            Upload PDF
-        </button>
+        <div class="card">
 
-        <select id="documentSelector">
+            <input type="file" id="pdfFile" accept=".pdf">
 
-            <option>
-                All Documents
-            </option>
+            <button class="upload-btn" onclick="uploadPDF()">
+                Upload PDF
+            </button>
 
-        </select>
+            <div id="uploadStatus" class="status"></div>
 
-        <textarea
-            id="question"
-            placeholder="Ask anything from your PDFs..."
-        ></textarea>
+        </div>
 
-        <button onclick="askQuestion()">
-            Ask AI
-        </button>
+        <!-- Ask -->
 
-        <button
-            class="danger-button"
-            onclick="clearKnowledgeBase()"
-        >
-            Clear Knowledge Base
-        </button>
+        <div class="card">
 
-        <div
-            id="status"
-            class="status"
-        ></div>
+            <select id="documentSelect">
 
-        <div
-            id="loading"
-            class="loading"
-        ></div>
+                <option>
+                    All Documents
+                </option>
 
-        <!-- DOCUMENT STATS -->
+            </select>
 
-        <div class="stats-container">
+            <textarea
+                id="question"
+                placeholder="Ask anything from your PDFs..."
+            ></textarea>
+
+            <button class="ask-btn" onclick="askQuestion()">
+                Ask AI
+            </button>
+
+            <button class="clear-btn" onclick="clearKnowledgeBase()">
+                Clear Knowledge Base
+            </button>
+
+        </div>
+
+        <!-- Stats -->
+
+        <div class="card">
 
             <h2>Indexed Documents</h2>
 
-            <div class="stats-grid">
+            <div class="stats">
 
-                <div class="stat-card">
+                <div class="stat-box">
 
-                    <div
-                        id="totalDocuments"
-                        class="stat-number"
-                    >
-                        0
-                    </div>
+                    <h2 id="docCount">0</h2>
 
-                    <div class="stat-label">
-                        Documents
-                    </div>
+                    <p>Documents</p>
 
                 </div>
 
-                <div class="stat-card">
+                <div class="stat-box">
 
-                    <div
-                        id="totalChunks"
-                        class="stat-number"
-                    >
-                        0
-                    </div>
+                    <h2 id="chunkCount">0</h2>
 
-                    <div class="stat-label">
-                        Chunks
-                    </div>
+                    <p>Chunks</p>
 
                 </div>
 
             </div>
 
-            <div id="documentsList"></div>
+            <div id="documentList"></div>
 
         </div>
 
-        <!-- CHAT -->
+        <!-- Chat -->
 
-        <div
-            id="chatContainer"
-            class="chat-container"
-        ></div>
+        <div id="chatContainer"></div>
 
     </div>
 
     <script>
 
-        let chatHistory = [];
-
-        // =========================================
-        // LOAD DOCUMENTS
-        // =========================================
-
         async function loadDocuments() {
 
-            const response =
-                await fetch("/documents");
+            const response = await fetch("/documents");
 
-            const data =
-                await response.json();
-
-            const documentsList =
-                document.getElementById(
-                    "documentsList"
-                );
-
-            const selector =
-                document.getElementById(
-                    "documentSelector"
-                );
+            const data = await response.json();
 
             document.getElementById(
-                "totalDocuments"
-            ).innerText =
-                data.total_documents;
+                "docCount"
+            ).innerText = data.total_documents;
 
             document.getElementById(
-                "totalChunks"
-            ).innerText =
-                data.total_chunks;
+                "chunkCount"
+            ).innerText = data.total_chunks;
 
-            documentsList.innerHTML = "";
+            const documentList = document.getElementById(
+                "documentList"
+            );
 
-            selector.innerHTML = `
-                <option>
-                    All Documents
-                </option>
-            `;
+            documentList.innerHTML = "";
+
+            const select = document.getElementById(
+                "documentSelect"
+            );
+
+            select.innerHTML = `
+<option>All Documents</option>
+`;
 
             data.documents.forEach(doc => {
 
-                documentsList.innerHTML += `
-                    <div class="doc-card">
+                documentList.innerHTML += `
+<div class="message">
+    <h3>${doc.name}</h3>
+    <p>${doc.chunks} chunks indexed</p>
+</div>
+`;
 
-                        <div class="doc-name">
-                            ${doc.name}
-                        </div>
-
-                        <div class="doc-meta">
-                            ${doc.chunks} chunks indexed
-                        </div>
-
-                    </div>
-                `;
-
-                selector.innerHTML += `
-                    <option>
-                        ${doc.name}
-                    </option>
-                `;
+                select.innerHTML += `
+<option>${doc.name}</option>
+`;
             });
         }
 
-        // =========================================
-        // UPLOAD PDF
-        // =========================================
-
         async function uploadPDF() {
 
-            const fileInput =
-                document.getElementById(
-                    "pdfFile"
-                );
+            const fileInput = document.getElementById(
+                "pdfFile"
+            );
 
-            const file =
-                fileInput.files[0];
-
-            const statusDiv =
-                document.getElementById(
-                    "status"
-                );
+            const file = fileInput.files[0];
 
             if (!file) {
 
@@ -437,407 +293,129 @@
                 return;
             }
 
-            const formData =
-                new FormData();
+            const formData = new FormData();
 
-            formData.append(
-                "pdf",
-                file
-            );
+            formData.append("pdf", file);
 
-            statusDiv.innerText =
-                "Uploading and indexing PDF...";
+            document.getElementById(
+                "uploadStatus"
+            ).innerText = "Uploading and indexing PDF...";
 
-            const response =
-                await fetch("/upload", {
-                    method: "POST",
-                    body: formData
-                });
+            const response = await fetch("/upload", {
 
-            const data =
-                await response.json();
+                method: "POST",
 
-            statusDiv.innerText =
-                data.message || data.error;
+                body: formData
+            });
+
+            const data = await response.json();
+
+            document.getElementById(
+                "uploadStatus"
+            ).innerText = data.message || data.error;
 
             loadDocuments();
         }
 
-        // =========================================
-        // CLEAR KNOWLEDGE BASE
-        // =========================================
+        async function askQuestion() {
 
-        async function clearKnowledgeBase() {
+            const question = document.getElementById(
+                "question"
+            ).value;
 
-            const confirmed =
-                confirm(
-                    "Clear all indexed PDFs?"
-                );
+            if (!question.trim()) {
 
-            if (!confirmed) {
+                alert("Please enter a question.");
+
                 return;
             }
 
-            const response =
-                await fetch("/reset", {
-                    method: "POST"
-                });
+            const selectedDoc = document.getElementById(
+                "documentSelect"
+            ).value;
 
-            const data =
-                await response.json();
+            const chatContainer = document.getElementById(
+                "chatContainer"
+            );
+
+            chatContainer.innerHTML += `
+<div class="message">
+    <h3>You</h3>
+    <p>Source: ${selectedDoc}</p>
+    <p>${question}</p>
+</div>
+
+<div class="message bot">
+    <h3>AI Answer</h3>
+    <p>Thinking...</p>
+</div>
+`;
+
+            const response = await fetch("/ask", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    question: question,
+
+                    selected_doc: selectedDoc,
+
+                    history: []
+                })
+            });
+
+            const data = await response.json();
+
+            chatContainer.innerHTML += `
+<div class="message bot">
+    <h3>AI Answer</h3>
+    <p>${data.answer}</p>
+
+    <h3>Citations</h3>
+
+    ${
+        data.citations.map(citation => `
+        <div class="citation">
+            <p><strong>Source:</strong> ${citation.source}</p>
+            <p><strong>Page:</strong> ${citation.page}</p>
+            <p><strong>Score:</strong> ${citation.hybrid_score}</p>
+            <p>${citation.preview}</p>
+        </div>
+        `).join("")
+    }
+</div>
+`;
 
             document.getElementById(
-                "status"
-            ).innerText =
-                data.message;
+                "question"
+            ).value = "";
+        }
+
+        async function clearKnowledgeBase() {
+
+            if (!confirm(
+                "Are you sure?"
+            )) {
+
+                return;
+            }
+
+            await fetch("/clear", {
+
+                method: "POST"
+            });
 
             document.getElementById(
                 "chatContainer"
             ).innerHTML = "";
 
-            chatHistory = [];
-
             loadDocuments();
         }
-
-        // =========================================
-        // ASK QUESTION
-        // =========================================
-
-        async function askQuestion() {
-
-            const questionInput =
-                document.getElementById(
-                    "question"
-                );
-
-            const question =
-                questionInput.value.trim();
-
-            const loadingDiv =
-                document.getElementById(
-                    "loading"
-                );
-
-            const chatContainer =
-                document.getElementById(
-                    "chatContainer"
-                );
-
-            const selectedDocument =
-                document.getElementById(
-                    "documentSelector"
-                ).value;
-
-            if (!question) {
-
-                alert(
-                    "Please enter a question."
-                );
-
-                return;
-            }
-
-            loadingDiv.innerText =
-                "Thinking...";
-
-            // USER MESSAGE
-
-            chatContainer.innerHTML += `
-                <div class="message user-message">
-
-                    <div class="message-title">
-                        You
-                    </div>
-
-                    <div style="opacity:0.7; margin-bottom:15px;">
-
-                        Source:
-                        ${selectedDocument}
-
-                    </div>
-
-                    ${question}
-
-                </div>
-            `;
-
-            // STREAMING REQUEST
-
-            const response =
-                await fetch("/ask", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body: JSON.stringify({
-                        question: question,
-                        history: chatHistory,
-                        selected_document:
-                            selectedDocument
-                    })
-                });
-
-            const reader =
-                response.body.getReader();
-
-            const decoder =
-                new TextDecoder();
-
-            // CREATE AI MESSAGE BOX
-
-            const aiMessageId =
-                "ai-" + Date.now();
-
-            const citationsId =
-                "citations-" + Date.now();
-
-            chatContainer.innerHTML += `
-                <div class="message ai-message">
-
-                    <div class="message-title">
-                        AI Answer
-                    </div>
-
-                    <div id="${aiMessageId}"></div>
-
-                    <br>
-
-                    <div class="message-title">
-                        Citations
-                    </div>
-
-                    <div id="${citationsId}"></div>
-
-                </div>
-            `;
-
-            const aiDiv =
-                document.getElementById(
-                    aiMessageId
-                );
-
-            const citationsDiv =
-                document.getElementById(
-                    citationsId
-                );
-
-            let finalAnswer = "";
-
-            while (true) {
-
-                const {
-                    value,
-                    done
-                } = await reader.read();
-
-                if (done) {
-                    break;
-                }
-
-                const chunk =
-                    decoder.decode(value);
-
-                const lines =
-                    chunk.split("\n");
-
-                for (const line of lines) {
-
-                    if (
-                        line.startsWith(
-                            "data: "
-                        )
-                    ) {
-
-                        try {
-
-                            const jsonData =
-                                JSON.parse(
-                                    line.replace(
-                                        "data: ",
-                                        ""
-                                    )
-                                );
-
-                            // TOKEN STREAM
-
-                            if (
-                                jsonData.token
-                            ) {
-
-                                finalAnswer +=
-                                    jsonData.token;
-
-                                aiDiv.innerHTML =
-                                    marked.parse(finalAnswer) +
-                                    '<span class="typing-cursor">|</span>';
-
-                                window.scrollTo({
-                                    top:
-                                        document.body.scrollHeight,
-                                    behavior:
-                                        "smooth"
-                                });
-                            }
-
-                            // DONE
-
-                            if (
-                                jsonData.done
-                            ) {
-
-                                aiDiv.innerHTML =
-                                    marked.parse(finalAnswer);
-
-                                let citationsHTML =
-                                    "";
-
-                                jsonData.citations.forEach(
-                                    citation => {
-
-                                        citationsHTML += `
-                                            <div class="citation-box">
-
-                                                <p>
-                                                    <strong>
-                                                        Source:
-                                                    </strong>
-
-                                                    ${citation.source}
-                                                </p>
-
-                                                <p>
-                                                    <strong>
-                                                        Page:
-                                                    </strong>
-
-                                                    ${citation.page}
-                                                </p>
-
-                                                <p>
-                                                    <strong>
-                                                        Hybrid Score:
-                                                    </strong>
-
-                                                    ${citation.hybrid_score}
-                                                </p>
-
-                                                <div class="preview">
-
-                                                    ${citation.preview}
-
-                                                    <br><br>
-
-                                                    <button
-                                                        onclick="togglePreview('preview-${citation.rank}')"
-                                                        style="
-                                                            width:auto;
-                                                            padding:8px 14px;
-                                                            font-size:14px;
-                                                            background:#355edb;
-                                                        "
-                                                    >
-                                                        Expand
-                                                    </button>
-
-                                                    <div
-                                                        id="preview-${citation.rank}"
-                                                        style="
-                                                            display:none;
-                                                            margin-top:12px;
-                                                            color:#d6e2ff;
-                                                            line-height:1.7;
-                                                        "
-                                                    >
-                                                        ${citation.preview}
-                                                    </div>
-
-                                                </div>
-
-                                            </div>
-                                        `;
-                                    }
-                                );
-
-                                citationsDiv.innerHTML =
-                                    citationsHTML;
-
-                                loadingDiv.innerText =
-                                    "";
-
-                                chatHistory.push({
-                                    role: "user",
-                                    content: question
-                                });
-
-                                chatHistory.push({
-                                    role: "assistant",
-                                    content: finalAnswer
-                                });
-                            }
-
-                        } catch (e) {
-
-                            console.log(e);
-                        }
-                    }
-                }
-            }
-
-            questionInput.value = "";
-        }
-
-        // =========================================
-        // TOGGLE PREVIEW
-        // =========================================
-
-        function togglePreview(id) {
-
-            const element =
-                document.getElementById(id);
-
-            if (
-                element.style.display ===
-                "none"
-            ) {
-
-                element.style.display =
-                    "block";
-
-            } else {
-
-                element.style.display =
-                    "none";
-            }
-        }
-
-        // =========================================
-        // ENTER SUPPORT
-        // =========================================
-
-        document
-            .getElementById("question")
-            .addEventListener(
-                "keydown",
-
-                function(event) {
-
-                    if (
-                        event.key === "Enter" &&
-                        !event.shiftKey
-                    ) {
-
-                        event.preventDefault();
-
-                        askQuestion();
-                    }
-                }
-            );
-
-        // =========================================
-        // INITIAL LOAD
-        // =========================================
 
         loadDocuments();
 
