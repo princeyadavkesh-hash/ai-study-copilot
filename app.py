@@ -1,6 +1,5 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify
 import os
-import json
 import requests
 from dotenv import load_dotenv
 
@@ -58,6 +57,10 @@ if len(all_chunks) > 0:
         for chunk in all_chunks
     ]
 
+    # FREE TIER OPTIMIZATION
+    if len(corpus) > 200:
+        corpus = corpus[:200]
+
     embedder.fit(corpus)
 
     bm25.fit(corpus)
@@ -85,8 +88,9 @@ def documents():
     for doc_name in vector_store.document_names:
 
         chunk_count = len([
-            c for c in all_chunks
-            if c.doc_name == doc_name
+            chunk
+            for chunk in all_chunks
+            if chunk.doc_name == doc_name
         ])
 
         docs.append({
@@ -101,11 +105,11 @@ def documents():
     })
 
 # =========================================
-# RESET
+# CLEAR KNOWLEDGE BASE
 # =========================================
 
-@app.route("/reset", methods=["POST"])
-def reset():
+@app.route("/clear", methods=["POST"])
+def clear_knowledge_base():
 
     global vector_store
     global embedder
@@ -157,17 +161,27 @@ def upload_pdf():
                 "error": "No file selected."
             })
 
-        document_name = os.path.splitext(
+        # =========================================
+        # DUPLICATE CHECK
+        # =========================================
+
+        clean_name = (
             pdf_file.filename
-        )[0]
+            .replace(".pdf", "")
+            .strip()
+        )
 
         if vector_store.has_document(
-            document_name
+            clean_name
         ):
 
             return jsonify({
                 "message": "Document already indexed."
             })
+
+        # =========================================
+        # SAVE PDF
+        # =========================================
 
         upload_folder = "data/uploads"
 
@@ -180,9 +194,12 @@ def upload_pdf():
 
         pdf_file.save(save_path)
 
+        # =========================================
+        # PROCESS PDF
+        # =========================================
+
         parsed_doc = process_pdf(
             save_path,
-            doc_name=document_name,
             chunk_index_offset=len(all_chunks)
         )
 
@@ -190,23 +207,50 @@ def upload_pdf():
 
         all_chunks.extend(new_chunks)
 
+        # =========================================
+        # CORPUS
+        # =========================================
+
         corpus = [
             chunk.text
             for chunk in all_chunks
         ]
 
+        # =========================================
+        # FREE TIER OPTIMIZATION
+        # =========================================
+
+        if len(corpus) > 200:
+            corpus = corpus[:200]
+
+        # =========================================
+        # EMBEDDINGS
+        # =========================================
+
         embedder.fit(corpus)
 
         embeddings = embedder.transform(corpus)
+
+        # =========================================
+        # VECTOR STORE
+        # =========================================
 
         vector_store = VectorStore()
 
         vector_store.add_embeddings(
             embeddings,
-            all_chunks
+            all_chunks[:len(corpus)]
         )
 
+        # =========================================
+        # SAVE VECTOR STORE
+        # =========================================
+
         vector_store.save()
+
+        # =========================================
+        # BM25
+        # =========================================
 
         bm25.fit(corpus)
 
@@ -218,7 +262,7 @@ Documents:
 {len(vector_store.document_names)}
 
 Total Chunks:
-{len(all_chunks)}
+{len(corpus)}
 """
         })
 
@@ -229,7 +273,7 @@ Total Chunks:
         })
 
 # =========================================
-# STREAMING ASK
+# ASK QUESTION
 # =========================================
 
 @app.route("/ask", methods=["POST"])
@@ -255,8 +299,8 @@ def ask_question():
             []
         )
 
-        selected_document = data.get(
-            "selected_document",
+        selected_doc = data.get(
+            "selected_doc",
             "All Documents"
         )
 
@@ -275,7 +319,7 @@ def ask_question():
             })
 
         # =========================================
-        # SEARCH
+        # SEMANTIC SEARCH
         # =========================================
 
         query_embedding = embedder.transform_one(
@@ -284,26 +328,23 @@ def ask_question():
 
         semantic_results = vector_store.search(
             query_embedding,
-            top_k=10
+            top_k=4
         )
 
         # =========================================
-        # FILTER DOCUMENT
+        # FILTER BY DOCUMENT
         # =========================================
 
-        if selected_document != "All Documents":
+        if selected_doc != "All Documents":
 
-            filtered_results = [
-                r for r in semantic_results
-                if r.chunk.doc_name.strip().lower()
-                == selected_document.strip().lower()
+            semantic_results = [
+                result
+                for result in semantic_results
+                if result.chunk.doc_name == selected_doc
             ]
 
-            if len(filtered_results) > 0:
-                semantic_results = filtered_results
-
         # =========================================
-        # BM25
+        # BM25 SEARCH
         # =========================================
 
         bm25_scores = bm25.get_scores_normalised(
@@ -338,12 +379,27 @@ def ask_question():
                 "hybrid_score": hybrid_score
             })
 
+        # =========================================
+        # SORT
+        # =========================================
+
         hybrid_results.sort(
             key=lambda x: x["hybrid_score"],
             reverse=True
         )
 
         top_results = hybrid_results[:4]
+
+        # =========================================
+        # EMPTY RESULT
+        # =========================================
+
+        if len(top_results) == 0:
+
+            return jsonify({
+                "answer": "I could not find that information in the uploaded PDFs.",
+                "citations": []
+            })
 
         # =========================================
         # CONTEXT
@@ -355,7 +411,7 @@ def ask_question():
         ])
 
         # =========================================
-        # HISTORY
+        # CHAT HISTORY
         # =========================================
 
         history_text = ""
@@ -377,9 +433,9 @@ def ask_question():
         prompt = f"""
 You are an AI Study Copilot.
 
-Use the provided PDF context to answer.
+Use ONLY the provided PDF context to answer.
 
-If answer is not found in context say:
+If answer is missing, say:
 "I could not find that information in the uploaded PDFs."
 
 ========================
@@ -402,6 +458,52 @@ Question
 """
 
         # =========================================
+        # GROQ API
+        # =========================================
+
+        url = "https://api.groq.com/openai/v1/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.3
+        }
+
+        response = requests.post(
+            url,
+            headers=headers,
+            json=payload
+        )
+
+        result = response.json()
+
+        answer = result["choices"][0]["message"]["content"]
+
+        # =========================================
+        # MEMORY
+        # =========================================
+
+        chat_history.append({
+            "role": "user",
+            "content": question
+        })
+
+        chat_history.append({
+            "role": "assistant",
+            "content": answer
+        })
+
+        # =========================================
         # CITATIONS
         # =========================================
 
@@ -422,84 +524,21 @@ Question
                     item["hybrid_score"],
                     3
                 ),
+                "semantic_score": round(
+                    item["semantic_score"],
+                    3
+                ),
+                "bm25_score": round(
+                    item["bm25_score"],
+                    3
+                ),
                 "preview": chunk.preview
             })
 
-        # =========================================
-        # STREAM GENERATOR
-        # =========================================
-
-        def generate():
-
-            url = "https://api.groq.com/openai/v1/chat/completions"
-
-            headers = {
-                "Authorization": f"Bearer {GROQ_API_KEY}",
-                "Content-Type": "application/json"
-            }
-
-            payload = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "temperature": 0.3,
-                "stream": True
-            }
-
-            response = requests.post(
-                url,
-                headers=headers,
-                json=payload,
-                stream=True
-            )
-
-            full_answer = ""
-
-            for line in response.iter_lines():
-
-                if line:
-
-                    decoded = line.decode("utf-8")
-
-                    if decoded.startswith("data: "):
-
-                        data_str = decoded[6:]
-
-                        if data_str == "[DONE]":
-                            break
-
-                        try:
-
-                            data_json = json.loads(
-                                data_str
-                            )
-
-                            delta = data_json["choices"][0]["delta"]
-
-                            content = delta.get(
-                                "content",
-                                ""
-                            )
-
-                            if content:
-
-                                full_answer += content
-
-                                yield f"data: {json.dumps({'token': content})}\n\n"
-
-                        except:
-                            pass
-
-            yield f"data: {json.dumps({'done': True, 'citations': citations})}\n\n"
-
-        return Response(
-            generate(),
-            mimetype="text/event-stream"
-        )
+        return jsonify({
+            "answer": answer,
+            "citations": citations
+        })
 
     except Exception as e:
 
