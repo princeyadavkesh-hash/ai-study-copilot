@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+venv/
+.env.example
+
+data/uploads/
+data/vector_cache/
+logs/
+
+*.npz
+*.pkl
+*.log
