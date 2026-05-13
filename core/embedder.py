@@ -1,45 +1,60 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
 
 
-class LightweightEmbedder:
-    def __init__(self):
+class LSAEmbedder:
+
+    def __init__(self, n_components=100):
+
         self.vectorizer = TfidfVectorizer(
-            stop_words="english",
-            max_features=3000
+            stop_words="english"
         )
-        self.matrix = None
-        self.texts = []
+
+        self.svd = TruncatedSVD(
+            n_components=n_components,
+            random_state=42
+        )
+
+        self.is_fitted = False
 
     def fit(self, texts):
-        self.texts = texts
 
-        if not texts:
-            self.matrix = None
+        if len(texts) == 0:
             return
 
-        self.matrix = self.vectorizer.fit_transform(texts)
+        tfidf_matrix = self.vectorizer.fit_transform(
+            texts
+        )
 
-    def search(self, query, top_k=5):
-        if self.matrix is None:
-            return []
+        max_components = min(
+            tfidf_matrix.shape[0] - 1,
+            tfidf_matrix.shape[1] - 1,
+            100
+        )
 
-        query_vector = self.vectorizer.transform([query])
+        if max_components < 2:
+            max_components = 2
 
-        similarities = cosine_similarity(
-            query_vector,
-            self.matrix
-        )[0]
+        self.svd = TruncatedSVD(
+            n_components=max_components,
+            random_state=42
+        )
 
-        top_indices = np.argsort(similarities)[::-1][:top_k]
+        self.svd.fit(tfidf_matrix)
 
-        results = []
+        self.is_fitted = True
 
-        for idx in top_indices:
-            results.append({
-                "index": int(idx),
-                "score": float(similarities[idx])
-            })
+    def transform(self, texts):
 
-        return results
+        tfidf_matrix = self.vectorizer.transform(
+            texts
+        )
+
+        return self.svd.transform(
+            tfidf_matrix
+        )
+
+    def transform_one(self, text):
+
+        return self.transform([text])[0]

@@ -4,7 +4,7 @@ import requests
 from dotenv import load_dotenv
 
 from core.vector_store import VectorStore
-from core.embedder import LightweightEmbedder
+from core.embedder import LSAEmbedder
 from core.pdf_processor import process_pdf
 from core.bm25 import BM25
 
@@ -20,7 +20,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 vector_store = VectorStore()
 
-embedder = LightweightEmbedder()
+embedder = LSAEmbedder()
 
 bm25 = BM25()
 
@@ -85,7 +85,7 @@ def clear_knowledge_base():
 
     vector_store = VectorStore()
 
-    embedder = LightweightEmbedder()
+    embedder = LSAEmbedder()
 
     bm25 = BM25()
 
