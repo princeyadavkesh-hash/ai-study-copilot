@@ -15,18 +15,57 @@ app = Flask(__name__)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # =========================================
-# GLOBALS
+# LOAD VECTOR STORE
 # =========================================
 
-vector_store = VectorStore()
+loaded_store = VectorStore.load()
+
+if loaded_store is not None:
+
+    vector_store = loaded_store
+
+    all_chunks = loaded_store._chunks
+
+    print("Loaded persisted vector store.")
+
+else:
+
+    vector_store = VectorStore()
+
+    all_chunks = []
+
+    print("Started fresh vector store.")
+
+# =========================================
+# GLOBALS
+# =========================================
 
 embedder = LSAEmbedder()
 
 bm25 = BM25()
 
-all_chunks = []
-
 chat_history = []
+
+# =========================================
+# REBUILD BM25 + EMBEDDINGS
+# =========================================
+
+if len(all_chunks) > 0:
+
+    corpus = [
+        chunk.text
+        for chunk in all_chunks
+    ]
+
+    # FREE TIER OPTIMIZATION
+    if len(corpus) > 200:
+        corpus = corpus[:200]
+
+    embedder.fit(corpus)
+
+    bm25.fit(corpus)
+
+    print(f"Restored {len(all_chunks)} chunks.")
 
 # =========================================
 # HOME
@@ -46,22 +85,17 @@ def documents():
 
     docs = []
 
-    unique_docs = {}
+    for doc_name in vector_store.document_names:
 
-    for chunk in all_chunks:
-
-        name = chunk.doc_name
-
-        if name not in unique_docs:
-            unique_docs[name] = 0
-
-        unique_docs[name] += 1
-
-    for doc_name, count in unique_docs.items():
+        chunk_count = len([
+            chunk
+            for chunk in all_chunks
+            if chunk.doc_name == doc_name
+        ])
 
         docs.append({
             "name": doc_name,
-            "chunks": count
+            "chunks": chunk_count
         })
 
     return jsonify({
@@ -71,7 +105,7 @@ def documents():
     })
 
 # =========================================
-# CLEAR
+# CLEAR KNOWLEDGE BASE
 # =========================================
 
 @app.route("/clear", methods=["POST"])
@@ -82,6 +116,8 @@ def clear_knowledge_base():
     global bm25
     global all_chunks
     global chat_history
+
+    vector_store.reset()
 
     vector_store = VectorStore()
 
@@ -125,11 +161,27 @@ def upload_pdf():
                 "error": "No file selected."
             })
 
+        # =========================================
+        # DUPLICATE CHECK
+        # =========================================
+
         clean_name = (
             pdf_file.filename
             .replace(".pdf", "")
             .strip()
         )
+
+        if vector_store.has_document(
+            clean_name
+        ):
+
+            return jsonify({
+                "message": "Document already indexed."
+            })
+
+        # =========================================
+        # SAVE PDF
+        # =========================================
 
         upload_folder = "data/uploads"
 
@@ -142,24 +194,64 @@ def upload_pdf():
 
         pdf_file.save(save_path)
 
-        parsed_doc = process_pdf(save_path)
+        # =========================================
+        # PROCESS PDF
+        # =========================================
+
+        parsed_doc = process_pdf(
+            save_path,
+            chunk_index_offset=len(all_chunks)
+        )
 
         new_chunks = parsed_doc.chunks
 
-        # LIMIT FOR FREE TIER
-        new_chunks = new_chunks[:40]
-
         all_chunks.extend(new_chunks)
+
+        # =========================================
+        # CORPUS
+        # =========================================
 
         corpus = [
             chunk.text
             for chunk in all_chunks
         ]
 
-        # LIGHTWEIGHT EMBEDDING
+        # =========================================
+        # FREE TIER OPTIMIZATION
+        # =========================================
+
+        if len(corpus) > 200:
+            corpus = corpus[:200]
+
+        # =========================================
+        # EMBEDDINGS
+        # =========================================
+
         embedder.fit(corpus)
 
+        embeddings = embedder.transform(corpus)
+
+        # =========================================
+        # VECTOR STORE
+        # =========================================
+
+        vector_store = VectorStore()
+
+        vector_store.add_embeddings(
+            embeddings,
+            all_chunks[:len(corpus)]
+        )
+
+        # =========================================
+        # SAVE VECTOR STORE
+        # =========================================
+
+        vector_store.save()
+
+        # =========================================
         # BM25
+        # =========================================
+
         bm25.fit(corpus)
 
         return jsonify({
@@ -167,7 +259,7 @@ def upload_pdf():
 PDF indexed successfully.
 
 Documents:
-1
+{len(vector_store.document_names)}
 
 Total Chunks:
 {len(corpus)}
@@ -181,15 +273,17 @@ Total Chunks:
         })
 
 # =========================================
-# ASK
+# ASK QUESTION
 # =========================================
 
 @app.route("/ask", methods=["POST"])
 def ask_question():
 
+    global vector_store
     global embedder
     global bm25
     global all_chunks
+    global chat_history
 
     try:
 
@@ -225,37 +319,82 @@ def ask_question():
             })
 
         # =========================================
-        # TF-IDF SEARCH
+        # SEMANTIC SEARCH
         # =========================================
 
-        search_results = embedder.search(
-            question,
+        query_embedding = embedder.transform_one(
+            question
+        )
+
+        semantic_results = vector_store.search(
+            query_embedding,
             top_k=4
         )
 
-        filtered_results = []
+        # =========================================
+        # FILTER BY DOCUMENT
+        # =========================================
 
-        for result in search_results:
+        if selected_doc != "All Documents":
 
-            idx = result["index"]
+            semantic_results = [
+                result
+                for result in semantic_results
+                if result.chunk.doc_name == selected_doc
+            ]
 
-            if idx >= len(all_chunks):
-                continue
+        # =========================================
+        # BM25 SEARCH
+        # =========================================
 
-            chunk = all_chunks[idx]
+        bm25_scores = bm25.get_scores_normalised(
+            question
+        )
 
-            if (
-                selected_doc != "All Documents"
-                and chunk.doc_name != selected_doc
-            ):
-                continue
+        # =========================================
+        # HYBRID SCORING
+        # =========================================
 
-            filtered_results.append({
+        hybrid_results = []
+
+        for result in semantic_results:
+
+            chunk = result.chunk
+
+            semantic_score = float(result.score)
+
+            bm25_score = float(
+                bm25_scores[chunk.chunk_index]
+            )
+
+            hybrid_score = (
+                0.6 * semantic_score +
+                0.4 * bm25_score
+            )
+
+            hybrid_results.append({
                 "chunk": chunk,
-                "score": result["score"]
+                "semantic_score": semantic_score,
+                "bm25_score": bm25_score,
+                "hybrid_score": hybrid_score
             })
 
-        if len(filtered_results) == 0:
+        # =========================================
+        # SORT
+        # =========================================
+
+        hybrid_results.sort(
+            key=lambda x: x["hybrid_score"],
+            reverse=True
+        )
+
+        top_results = hybrid_results[:4]
+
+        # =========================================
+        # EMPTY RESULT
+        # =========================================
+
+        if len(top_results) == 0:
 
             return jsonify({
                 "answer": "I could not find that information in the uploaded PDFs.",
@@ -268,11 +407,11 @@ def ask_question():
 
         context = "\n\n".join([
             item["chunk"].text
-            for item in filtered_results
+            for item in top_results
         ])
 
         # =========================================
-        # HISTORY
+        # CHAT HISTORY
         # =========================================
 
         history_text = ""
@@ -294,32 +433,32 @@ def ask_question():
         prompt = f"""
 You are an AI Study Copilot.
 
-Answer ONLY using the PDF context.
+Use ONLY the provided PDF context to answer.
 
 If answer is missing, say:
 "I could not find that information in the uploaded PDFs."
 
-====================
-Conversation
-====================
+========================
+Conversation History
+========================
 
 {history_text}
 
-====================
+========================
 PDF Context
-====================
+========================
 
 {context}
 
-====================
+========================
 Question
-====================
+========================
 
 {question}
 """
 
         # =========================================
-        # GROQ
+        # GROQ API
         # =========================================
 
         url = "https://api.groq.com/openai/v1/chat/completions"
@@ -330,7 +469,7 @@ Question
         }
 
         payload = {
-            "model": "llama-3.1-8b-instant",
+            "model": "llama-3.3-70b-versatile",
             "messages": [
                 {
                     "role": "user",
@@ -344,17 +483,52 @@ Question
             url,
             headers=headers,
             json=payload,
-            timeout=30
+            timeout=60
         )
+
+        print("STATUS:", response.status_code)
+        print("RAW RESPONSE:", response.text)
+
+        if response.status_code != 200:
+
+            return jsonify({
+                "answer": f"Groq API Error: {response.text}",
+                "citations": []
+            })
 
         result = response.json()
 
+        if "choices" not in result:
+
+            return jsonify({
+                "answer": f"Invalid API response: {result}",
+                "citations": []
+            })
+
         answer = result["choices"][0]["message"]["content"]
+
+        # =========================================
+        # MEMORY
+        # =========================================
+
+        chat_history.append({
+            "role": "user",
+            "content": question
+        })
+
+        chat_history.append({
+            "role": "assistant",
+            "content": answer
+        })
+
+        # =========================================
+        # CITATIONS
+        # =========================================
 
         citations = []
 
         for rank, item in enumerate(
-            filtered_results,
+            top_results,
             start=1
         ):
 
@@ -364,7 +538,18 @@ Question
                 "source": chunk.doc_name,
                 "page": chunk.page_num,
                 "rank": rank,
-                "score": round(item["score"], 3),
+                "hybrid_score": round(
+                    item["hybrid_score"],
+                    3
+                ),
+                "semantic_score": round(
+                    item["semantic_score"],
+                    3
+                ),
+                "bm25_score": round(
+                    item["bm25_score"],
+                    3
+                ),
                 "preview": chunk.preview
             })
 
